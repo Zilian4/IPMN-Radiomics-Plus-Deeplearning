@@ -5,7 +5,7 @@ import argparse
 from typing import List, Dict, Any
 from sklearn.model_selection import KFold, train_test_split
 
-def generate_cross_validation_json(folder_path: str, output_json_path: str = 'cross_validation.json') -> None:
+def generate_cross_validation_json(folder_path: str, test_path, output_json_path: str = 'cross_validation.json') -> None:
     """
     Generates a JSON file with a 10% test split and five-fold cross-validation splits
     for the remaining 90% of files in a given folder.
@@ -29,14 +29,16 @@ def generate_cross_validation_json(folder_path: str, output_json_path: str = 'cr
     """
     
     # Step 1: Retrieve all file names in the specified folder
-    files: List[str] = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-    
+    train_files: List[str] = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+    if test_path is not None:
+        test_files: List[str] = [f for f in os.listdir(test_path) if os.path.isfile(os.path.join(test_path, f))]
+    else:
+        test_files = []
     # Step 2: Shuffle files to ensure randomness
-    random.shuffle(files)
+    random.shuffle(train_files)
     
-    # Step 3: Split files into 10% for testing and 90% for cross-validation
-    train_files, test_files = train_test_split(files, test_size=0.1, random_state=42)
-    
+    # train_files, test_files = train_test_split(files, test_size=0.1, random_state=42)
+    # test_files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
     # Step 4: Initialize KFold for five splits on the 90% training data
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
     cross_validation: List[Dict[str, Any]] = []
@@ -55,7 +57,7 @@ def generate_cross_validation_json(folder_path: str, output_json_path: str = 'cr
     
     # Step 6: Create the final data structure with test and cross-validation splits
     data = {
-        'test_split': test_files,
+        'test_files': test_files,
         'cross_validation': cross_validation
     }
     
@@ -74,9 +76,9 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate a JSON file with 10% test split and five-fold cross-validation.")
     parser.add_argument('-i', '--input', required=True, help="Path to the folder containing files for cross-validation.")
     parser.add_argument('-o', '--output', default='cross_validation.json', help="Output path for the JSON file (default: cross_validation.json).")
-    
+    parser.add_argument('-t', '--testset',default=None,help="Path to the folder containing files for cross-validation.")
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_arguments()
-    generate_cross_validation_json(folder_path=args.input, output_json_path=args.output)
+    generate_cross_validation_json(folder_path=args.input, output_json_path=args.output,test_path=args.testset)
