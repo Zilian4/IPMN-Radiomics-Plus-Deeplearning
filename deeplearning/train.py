@@ -1,42 +1,62 @@
 import os
 import argparse
+import numpy as np
 import json
 from tqdm import tqdm
 import torch
 import torch.nn as nn
-from data_loader import get_data_list, get_fold
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+from data_loader import get_data_list
 from model import get_model
-from seed import seed_everything
+# from seed import seed_everything
 from sklearn.metrics import roc_auc_score
-from monai.data import DataLoader, ImageDataset
-from monai.transforms import RandRotate90, Resize, EnsureChannelFirst, Compose, ScaleIntensity, RandAxisFlip
+from sklearn.preprocessing import label_binarize
+from monai.data import DataLoader, ImageDataset,decollate_batch
+from monai.transforms import (
+    EnsureChannelFirst,
+    Compose,
+    RandRotate90,
+    Resize,
+    ScaleIntensity,
+    Activations,
+    EnsureChannelFirst,
+    AsDiscrete,
+    Compose,
+    LoadImage,
+    RandFlip,
+    RandRotate,
+    RandZoom,
+    ScaleIntensity,
+    MixUp,
+    CutMix,
+    RandAxisFlip
+)
 
-def train_fn(dataloader, model, loss_fn, optimizer, device):
+def train(dataloader, model, loss_fn, optimizer, device):
     model.train()
     total_loss = 0
-    total_correct = 0
     batch_count = 0
-    sample_count = 0
     progress_bar = tqdm(dataloader, desc="Training")
     for batch, (X, y) in enumerate(progress_bar):
         X, y = X.to(device), y.to(device)
+
+        # Compute prediction error
         pred = model(X)
         loss = loss_fn(pred, y)
+
+        # Backpropagation
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
         total_loss += loss.item()
-        correct = (pred.argmax(1) == y).type(torch.float).sum().item()
-        total_correct += correct
         batch_count += 1
-        sample_count += len(X)
-        progress_bar.set_postfix(lr=optimizer.param_groups[0]['lr'], loss=f"{loss.item():.4f}", loss_avg = f"{total_loss/batch_count:.4f}", acc=f"{correct/len(X):.4f}", acc_avg = f"{total_correct/sample_count:.4f}")   
-    return {'loss': total_loss/batch_count, 'acc': total_correct/sample_count}
+        progress_bar.set_postfix(lr=optimizer.param_groups[0]['lr'], loss=f"{loss.item():.4f}", loss_avg = f"{total_loss/batch_count:.4f}")
+    return total_loss/batch_count
 
-def test_fn(dataloader, model, loss_fn, device):
+def test(dataloader, model, loss_fn, device):
     model.eval()
-    total_loss = 0
-    total_correct = 0
+    total_loss, total_correct = 0, 0
     batch_count = 0
     sample_count = 0
     y_all = []
@@ -47,101 +67,94 @@ def test_fn(dataloader, model, loss_fn, device):
             y_all.extend(y)
             X, y = X.to(device), y.to(device)
             pred = model(X)
-            pred_all.extend(torch.nn.functional.softmax(pred, dim=-1)[:, 1].cpu().numpy())
+            print(pred)
+            print(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
+            pred_all.extend(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
             loss = loss_fn(pred, y)
             total_loss += loss.item()
             correct = (pred.argmax(1) == y).type(torch.float).sum().item()
             total_correct += correct
             batch_count += 1
             sample_count += len(X)
-            progress_bar.set_postfix(loss=f"{loss.item():.4f}", loss_avg = f"{total_loss/batch_count:.4f}", acc=f"{correct/len(X):.4f}", acc_avg = f"{total_correct/sample_count:.4f}")
-    auc_score = roc_auc_score(y_all, pred_all)
-    return {'loss': total_loss/batch_count, 'acc': total_correct/sample_count, 'auc': auc_score}, {'true': y_all, 'pred': pred_all}
+            progress_bar.set_postfix(loss=f"{loss.item():.4f}", loss_avg = f"{total_loss/batch_count:.4f}", acc=f"{correct/len(X):.4f}", acc_avg = f"{total_correct/sample_count:.4f}")    
+    y_all = label_binarize(y_all, classes=[0, 1, 2])
+    try:
+        auc_score = roc_auc_score(y_all, pred_all, average='macro', multi_class='ovr')
+    except ValueError as e:
+        print("Error calculating AUC:", e)
+        auc_score = 0
+    
+    return total_loss/batch_count, total_correct/sample_count, auc_score
     
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="PanSeg Training.")
-    parser.add_argument("--data-path", default="/dataset/IPMN_Classification/", type=str, help="dataset path")
-    parser.add_argument("--output-dir", default="./saved", type=str, help="path to save outputs")
+    # Required info
+    parser = argparse.ArgumentParser(description="Classification Training.")
+    parser.add_argument("--image-path", default=None, required=True,type=str, help="images path")
+    parser.add_argument("--output-dir", default="./weights", type=str, help="path to save outputs")
+    parser.add_argument("--dataset_dtl",default=None,required=True,type=str,help="json file, contains data set splitting details of cross validation")
+    parser.add_argument("--label",default=None,required=True,type=str,help="csv file contains names and labels")
+    
+    # Optional 
     parser.add_argument("--device", default="cuda", type=str, help="device (Use cuda or cpu Default: cuda)")
-    parser.add_argument("-b", "--batch-size", default=16, type=int, help="batch size")
+    parser.add_argument("-b", "--batch-size", default=32, type=int, help="batch size")
     parser.add_argument("-j", "--workers", default=0, type=int, metavar="N", help="number of data loading workers")
     parser.add_argument("--epochs", default=100, type=int, metavar="N", help="number of total epochs to run")
     parser.add_argument("--lr", default=1e-3, type=float, help="initial learning rate")
     parser.add_argument("--lr-step-size", default=30, type=int, help="decrease lr every step-size epochs")
     parser.add_argument("--lr-gamma", default=0.1, type=float, help="decrease lr by a factor of lr-gamma")
+    parser.add_argument("--split-ratio", default=0.8, type=float, help="training ratio")
+    parser.add_argument("--split-seed", default=0, type=float, help="split seed")
+    parser.add_argument("--resume", default="model_loss.pth", type=str, help="path of checkpoint")
     parser.add_argument("--t", default=1, type=int, help="modality (must be 1 or 2)")
-    parser.add_argument("-f", "--fold", default=0, type=int, help="fold id for cross validation  (must be 0 to 3)")
     parser.add_argument("-s", "--seed", default=None, type=int, metavar="N", help="Seed")
+    parser.add_argument("-f","--fold",default=0)
     args = parser.parse_args()
-    args.output_dir = os.path.join(args.output_dir, 't'+str(args.t), 'fold'+str(args.fold))
-
-    if args.seed:
-        seed_everything(args.seed)
+    
+    # if args.seed:
+    #     seed_everything(args.seed)
     
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
         
     device = torch.device(args.device)
-    image_lists = []
-    label_lists = []
-    train_ds = []
-    test_ds = []
-    train_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((96, 96, 96)), RandAxisFlip(), RandRotate90()])
+    df_train, df_val,df_test = get_data_list(dataset_dtl=args.dataset_dtl,
+                                           labels_path=args.label,
+                                           images_path=args.image_path,
+                                           fold=args.fold)
+    print(f'Using dataset information:{args.dataset_dtl}')
+    print(f"Fold {args.fold+1}, \n Cross validation train: {len(df_train)}  val:{len(df_val)}.")
+    # split = int(np.floor(len(image_list) * args.split_ratio))
+    # indices = np.random.default_rng(seed=args.split_seed).permutation(len(image_list))
+    # train_idx, test_idx = list(indices[:split]), list(indices[split:])
+    train_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((96, 96, 96)), RandAxisFlip(prob=0.5), RandRotate90()])
     test_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((96, 96, 96))])
-    image_list, label_list = get_data_list(root=args.data_path, t = args.t)
-    train_image, train_label, test_image, test_label = get_fold(image_list, label_list, fold = args.fold)
-
-    train_ds.append(ImageDataset(image_files=train_image, labels=train_label, transform=train_transforms))
-    test_ds.append(ImageDataset(image_files=test_image, labels=test_label, transform=test_transforms))
-    train_dataloader = DataLoader(torch.utils.data.ConcatDataset(train_ds), batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
-    test_dataloader = []
-    test_dataloader.append(DataLoader(test_ds[c], batch_size=args.batch_size, shuffle=False, num_workers=args.workers))
-    n_test_dataloader = sum([len(test_dataloader[i]) for i in range(n_center)])
-    n_test_ds = sum([len(test_ds[i]) for i in range(n_center)])
     
-    model = get_model(out_channels = 2)
+    train_ds = ImageDataset(image_files=df_train['path'].to_list(), labels=df_train['label'].to_list(), transform=train_transforms)
+    test_ds = ImageDataset(image_files=df_val['path'].to_list(), labels=df_val['label'].to_list(), transform=test_transforms)
+    train_dataloader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
+    test_dataloader = DataLoader(test_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
+    model = get_model()
     model.to(device)
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma)
-    
-    log = {'train_loss':[], 'train_acc':[], 'test_loss':[[] for i in range(n_center+1)], 'test_acc':[[] for i in range(n_center+1)], 'test_auc':[[] for i in range(n_center+1)]}    
-    best_ind = {'loss': 0, 'acc': 0, 'auc': 0}
+    log = {'train_loss':[], 'test_loss':[], 'test_acc':[], 'test_auc':[]}
     for epoch in range(args.epochs):
-        epoch_log = train_fn(train_dataloader, model, loss_fn, optimizer, device)
-        for metric in ['loss', 'acc']:
-            log['train_'+metric].append(epoch_log[metric])
+        log['train_loss'].append(train(train_dataloader, model, loss_fn, optimizer, device))
         scheduler.step()
-        y_all = []
-        pred_all = []
-        for c in range(n_center):
-            epoch_log, epoch_y = test_fn(test_dataloader[c], model, loss_fn, device)
-            for metric in ['loss', 'acc', 'auc']:
-                log['test_'+metric][c].append(epoch_log[metric])
-            y_all.extend(epoch_y['true'])
-            pred_all.extend(epoch_y['pred'])
-        
-        log['test_loss'][-1].append(sum([log['test_loss'][i][-1]*len(test_dataloader[i]) for i in range(n_center)])/n_test_dataloader)
-        log['test_acc'][-1].append(sum([log['test_acc'][i][-1]*len(test_ds[i]) for i in range(n_center)])/n_test_ds)
-        log['test_auc'][-1].append(roc_auc_score(y_all, pred_all))
-        print(f"Epoch {epoch+1} train loss {log['train_loss'][-1]:.4f} acc {log['train_acc'][-1]:.4f}")
-        for c in range(n_center):
-            print(f"Center {c+1} test loss {log['test_loss'][c][-1]:.4f} acc {log['test_acc'][c][-1]:.4f} auc {log['test_auc'][c][-1]:.4f}")
-        print(f"Global test loss {log['test_loss'][-1][-1]:.4f} acc {log['test_acc'][-1][-1]:.4f} auc {log['test_auc'][-1][-1]:.4f}")
-        
+        loss, acc, auc = test(test_dataloader, model, loss_fn, device)
+        log['test_loss'].append(loss)
+        log['test_acc'].append(acc)
+        log['test_auc'].append(auc)
+        print(f"Epoch {epoch} train loss {log['train_loss'][-1]:.4f} test loss {log['test_loss'][-1]:.4f} test acc {log['test_acc'][-1]:.4f}  test auc {log['test_auc'][-1]:.4f}")
         torch.save(model.state_dict(), os.path.join(args.output_dir, "checkpoint.pth"))
         with open(os.path.join(args.output_dir, "log.json"), 'w') as f:
             json.dump(log, f)
-        if log['test_loss'][-1][-1] <= min(log['test_loss'][-1]):    
-            best_ind['loss'] = epoch
+        if log['test_loss'][-1] <= min(log['test_loss']):    
             torch.save(model.state_dict(), os.path.join(args.output_dir, "model_loss.pth"))
-        for metric, metric2 in (['acc', 'auc'], ['auc', 'acc']): # save model when metric improves or both metric and metric2 are maximized. The second condition avoids one best again but another worse
-            if epoch == 0 or log['test_'+metric][-1][-1] > max(log['test_'+metric][-1][:-1]) or log['test_'+metric][-1][-1] == max(log['test_'+metric][-1][:-1]) and log['test_'+metric2][-1][-1] >= max(log['test_'+metric2][-1][:-1]):
-                best_ind[metric] = epoch
-                torch.save(model.state_dict(), os.path.join(args.output_dir, 'model_'+metric+'.pth'))
-    
-    for metric in ['acc', 'auc']:
-        print(f"{metric} best model reached at epoch {best_ind[metric]+1}")
-        for c in range(n_center):
-            print(f"Center {c+1} test loss {log['test_loss'][c][best_ind[metric]]:.4f} acc {log['test_acc'][c][best_ind[metric]]:.4f} auc {log['test_auc'][c][best_ind[metric]]:.4f}")
-        print(f"Global test loss {log['test_loss'][-1][best_ind[metric]]:.4f} acc {log['test_acc'][-1][best_ind[metric]]:.4f} auc {log['test_auc'][-1][best_ind[metric]]:.4f}")
+        if log['test_acc'][-1] >= max(log['test_acc']):    
+            torch.save(model.state_dict(), os.path.join(args.output_dir, "model_acc.pth"))
+        if log['test_auc'][-1] >= max(log['test_auc']):    
+            torch.save(model.state_dict(), os.path.join(args.output_dir, "model_auc.pth"))
+    print(f"Acc best model test acc {max(log['test_acc']):.4f} test auc {log['test_auc'][np.argmax(log['test_acc'])]:.4f}")
+    print(f"Auc best model test acc {log['test_acc'][np.argmax(log['test_auc'])]:.4f} test auc {max(log['test_auc']):.4f}")

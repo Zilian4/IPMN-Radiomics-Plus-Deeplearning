@@ -1,47 +1,65 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Sep 17 17:14:38 2024
-
-@author: pky0507
-"""
-
 import os
+import torch
+from torch.utils.data import Dataset
+import nibabel as nib
 import numpy as np
+import monai
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold
+import json
+from monai.data import DataLoader, ImageDataset,decollate_batch
+def get_tr_vl_ts_list(dataset_dtl,fold=0):
 
-def get_data_list(root='/dataset/IPMN_Classification/', t = 1, center = None):
+    with open(dataset_dtl, 'r') as f:
+        fold_data = json.load(f)
+    test_list = []
+    for name in fold_data['test_files']:
+        test_list.append(name.split('.nii.gz')[0])
+    # test_list = [n.lower() for n in test_list]
+
+    train_list =[]
+    for name in fold_data['cross_validation'][fold]['train_files']:
+        train_list.append(name.split('.nii.gz')[0])
+    # train_list = [n.lower() for n in train_list]
+
+
+    val_list=[]
+    for name in fold_data['cross_validation'][fold]['validation_files']:
+        val_list.append(name.split('.nii.gz')[0])
+    # val_list = [n.lower() for n in val_list]
+    
+    return train_list,val_list,test_list
+
+
+def get_data_list(dataset_dtl, images_path,labels_path,fold):
     image_list = []
     label_list = []
-    center_names = [['nyu'], ['CAD', 'MCF'], ['northwestern', 'NU'], ['AHN', 'ahn'], ['mca'], ['IU'], ['EMC']]
-    
-    df = pd.read_excel(os.path.join(root, 'IPMN_labels_t'+str(t)+'.xlsx'), usecols=[0, 3])
+    df = pd.read_csv(labels_path)
     df_cleaned = df.dropna(subset=[df.columns[1]]) # remove NaN
-    names = df_cleaned.iloc[:, 0].values
-    labels = df_cleaned.iloc[:, 1].to_numpy(dtype=np.int64)//2 # we treat no/low-risk as 0 and high-risk as 1
-    if center == None:
-        center = np.arange(len(center_names))
-    elif isinstance(center, int):
-        center = [center]
-    center_name = []
-    for i in center:
-        center_name += center_names[i]
-    for i in range(len(names)):
-        name = names[i].replace('.nii.gz', '')
-        for c in center_name:
-            if c in name:
-                image_list.append(os.path.join(root, 't'+str(t)+'_clean_ROI', name+'.nii.gz'))
-                label_list.append(labels[i])
-                break
-    return image_list, label_list
 
-def get_fold(image:list, label:list, n_splits = 4, fold = 0):
-    skf = StratifiedKFold(n_splits=n_splits, shuffle=False)
-    skf.get_n_splits(image, label)
-    for i, (train_index, test_index) in enumerate(skf.split(image, label)):
-        if i == fold:
-            train_image = [image[j] for j in train_index]
-            train_label = [label[j] for j in train_index]
-            test_image = [image[j] for j in test_index]
-            test_label = [label[j] for j in test_index]
-            return train_image, train_label, test_image, test_label
+    train_list,val_list, test_list = get_tr_vl_ts_list(dataset_dtl)
+    df_train = df_cleaned[df_cleaned['name'].isin(train_list)]
+    df_val = df_cleaned[df_cleaned['name'].isin(val_list)]
+    df_test = df_cleaned[df_cleaned['name'].isin(test_list)]
+
+    df_train['path'] = df_train['name'].apply(lambda x: os.path.join(images_path, x+'.nii.gz'))
+    df_test['path'] = df_test['name'].apply(lambda x: os.path.join(images_path, x+'.nii.gz'))
+    df_val['path'] = df_val['name'].apply(lambda x: os.path.join(images_path, x+'.nii.gz'))
+    # if center == None:
+    #     center = np.arange(len(center_names))
+    # elif isinstance(center, int):
+    #     center = [center]
+    # center_name = []
+    # for i in range(len(names)):
+    #     name = names[i].replace('.nii.gz', '')
+    #     for c in center_name:
+    #         if c in name:
+                # image_list.append(os.path.join(images_path, name+'.nii.gz'))
+                # label_list.append(labels[i].astype(np.int64))
+    #             break
+    return df_train,df_val,df_test
+
+# image_list, label_list = get_data_list()
+
+# train_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((96, 96, 96)), RandRotate90()])
+# test_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((96, 96, 96))])
+# train_ds = ImageDataset(image_files=image_list, labels=label_list, transform=train_transforms)
