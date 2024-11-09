@@ -67,8 +67,8 @@ def test(dataloader, model, loss_fn, device):
             y_all.extend(y)
             X, y = X.to(device), y.to(device)
             pred = model(X)
-            print(pred)
-            print(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
+            # print(pred)
+            # print(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
             pred_all.extend(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
             loss = loss_fn(pred, y)
             total_loss += loss.item()
@@ -95,8 +95,8 @@ if __name__ == "__main__":
     parser.add_argument("--label",default=None,required=True,type=str,help="csv file contains names and labels")
     
     # Optional 
-    parser.add_argument("--device", default="cuda", type=str, help="device (Use cuda or cpu Default: cuda)")
-    parser.add_argument("-b", "--batch-size", default=32, type=int, help="batch size")
+    parser.add_argument("--device", default="0", help="device (Use cuda or cpu Default: cuda)")
+    parser.add_argument("-b", "--batch-size", default=16, type=int, help="batch size")
     parser.add_argument("-j", "--workers", default=0, type=int, metavar="N", help="number of data loading workers")
     parser.add_argument("--epochs", default=100, type=int, metavar="N", help="number of total epochs to run")
     parser.add_argument("--lr", default=1e-3, type=float, help="initial learning rate")
@@ -116,13 +116,13 @@ if __name__ == "__main__":
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
         
-    device = torch.device(args.device)
+    device = torch.device(f'cuda:{args.device}')
     df_train, df_val,df_test = get_data_list(dataset_dtl=args.dataset_dtl,
                                            labels_path=args.label,
                                            images_path=args.image_path,
                                            fold=args.fold)
     print(f'Using dataset information:{args.dataset_dtl}')
-    print(f"Fold {args.fold+1}, \n Cross validation train: {len(df_train)}  val:{len(df_val)}.")
+    print(f"Fold {args.fold}, \n Cross validation train: {len(df_train)}  val:{len(df_val)}.")
     # split = int(np.floor(len(image_list) * args.split_ratio))
     # indices = np.random.default_rng(seed=args.split_seed).permutation(len(image_list))
     # train_idx, test_idx = list(indices[:split]), list(indices[split:])
@@ -139,6 +139,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma)
     log = {'train_loss':[], 'test_loss':[], 'test_acc':[], 'test_auc':[]}
+    info = f'{args.dataset_dtl.split("/")[-1].split(".json")[0]}_fold{args.fold}'
     for epoch in range(args.epochs):
         log['train_loss'].append(train(train_dataloader, model, loss_fn, optimizer, device))
         scheduler.step()
@@ -148,13 +149,14 @@ if __name__ == "__main__":
         log['test_auc'].append(auc)
         print(f"Epoch {epoch} train loss {log['train_loss'][-1]:.4f} test loss {log['test_loss'][-1]:.4f} test acc {log['test_acc'][-1]:.4f}  test auc {log['test_auc'][-1]:.4f}")
         torch.save(model.state_dict(), os.path.join(args.output_dir, "checkpoint.pth"))
-        with open(os.path.join(args.output_dir, "log.json"), 'w') as f:
+        
+        with open(os.path.join(args.output_dir, f"log_{info}.json"), 'w') as f:
             json.dump(log, f)
         if log['test_loss'][-1] <= min(log['test_loss']):    
-            torch.save(model.state_dict(), os.path.join(args.output_dir, "model_loss.pth"))
+            torch.save(model.state_dict(), os.path.join(args.output_dir, f"model_loss_{info}.pth"))
         if log['test_acc'][-1] >= max(log['test_acc']):    
-            torch.save(model.state_dict(), os.path.join(args.output_dir, "model_acc.pth"))
+            torch.save(model.state_dict(), os.path.join(args.output_dir, f"model_acc_{info}.pth"))
         if log['test_auc'][-1] >= max(log['test_auc']):    
-            torch.save(model.state_dict(), os.path.join(args.output_dir, "model_auc.pth"))
+            torch.save(model.state_dict(), os.path.join(args.output_dir, f"model_auc_{info}.pth"))
     print(f"Acc best model test acc {max(log['test_acc']):.4f} test auc {log['test_auc'][np.argmax(log['test_acc'])]:.4f}")
     print(f"Auc best model test acc {log['test_acc'][np.argmax(log['test_auc'])]:.4f} test auc {max(log['test_auc']):.4f}")
