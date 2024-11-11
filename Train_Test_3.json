@@ -1,7 +1,6 @@
 {
     "test_files": [
         "IUC_18.nii.gz",
-        ".DS_Store",
         "IUC_16.nii.gz",
         "IUC_43.nii.gz",
         "IUC_51.nii.gz",
