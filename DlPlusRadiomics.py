@@ -109,7 +109,7 @@ def predict_with_fusion_model(densenet_model, rf_model, fusion_model,image_datal
 # Important addresses
 
 # %%
-train_test_info = 'Train_Test_1'
+train_test_info = 'Train_Test_4'
 
 dataset_dtl_path = f'/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/{train_test_info}.json'
 # deep learning input
@@ -124,65 +124,68 @@ radiomcis_model_dir = '/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/radiomics/
 # Normalization
 
 # %%
-# Test 4
-# feature_list = [
-# 'skewness-Laws R5S5',
-# 'Collage_kurt_MaximalCorrelationCoefficient_1_nb_4_ws_5',
-# 'Collage_skew_InformationMeasureOfCorrelation2_1_nb_8_ws_3',
-# 'Collage_kurt_Contrast_1_nb_8_ws_7',
-# 'Collage_median_MaximalCorrelationCoefficient_1_nb_32_ws_3',
-# 'Collage_skew_Correlation_1_nb_16_ws_5',
-# 'Collage_skew_MaximalCorrelationCoefficient_1_nb_4_ws_3',
-# 'Collage_skew_SumVariance_1_nb_8_ws_5',
-# 'median-Laws E5L5',
-# 'Collage_skew_Entropy_1_nb_16_ws_7',
-# 'skewness-Laws S5E5',
-# 'skewness-Laws W5L5',
-# 'Collage_skew_DifferenceEntropy_1_nb_4_ws_3',
-# 'Collage_var_Contrast_1_nb_8_ws_7',
-# 'Collage_kurt_SumEntropy_1_nb_16_ws_5',
-# ]
-
-# test3
-# feature_list = ['Collage_skew_InformationMeasureOfCorrelation2_1_nb_8_ws_3',
-# 'skewness-Laws S5E5',
-# 'skewness-Laws R5S5',
-# 'Collage_skew_InformationMeasureOfCorrelation2_1_nb_16_ws_5',
-# 'Collage_skew_Correlation_1_nb_8_ws_5',
-# 'median-Laws E5L5',
-# 'median-Laws W5S5',
-# 'Collage_skew_MaximalCorrelationCoefficient_1_nb_4_ws_3']
-
-# test2
-# feature_list = ['Collage_kurt_MaximalCorrelationCoefficient_1_nb_4_ws_5',
-# 'median-Laws E5L5',
-# 'Collage_skew_InformationMeasureOfCorrelation2_1_nb_8_ws_3',
-# 'Collage_var_InformationMeasureOfCorrelation2_1_nb_16_ws_3',
-# 'skewness-Laws R5S5',
-# 'Collage_skew_MaximalCorrelationCoefficient_1_nb_4_ws_3',
-# 'skewness-Laws S5E5',
-# 'median-Laws W5S5',
-# 'Collage_kurt_MaximalCorrelationCoefficient_1_nb_4_ws_7',
-# 'Collage_median_SumEntropy_1_nb_8_ws_3',
-# 'Collage_kurt_SumEntropy_1_nb_16_ws_5',
-# 'Collage_skew_SumVariance_1_nb_4_ws_7']
-
-# test1
-feature_list = ['Collage_skew_InformationMeasureOfCorrelation2_1_nb_8_ws_3',
-'Collage_var_InformationMeasureOfCorrelation2_1_nb_16_ws_3',
-'Collage_kurt_Contrast_1_nb_16_ws_7',
-'Collage_skew_MaximalCorrelationCoefficient_1_nb_4_ws_3',
-'Collage_kurt_SumAverage_1_nb_16_ws_3',
-'Collage_kurt_InformationMeasureOfCorrelation2_1_nb_16_ws_3',
-'Collage_kurt_MaximalCorrelationCoefficient_1_nb_4_ws_5',
-'median-Laws E5L5',
-'Collage_kurt_SumEntropy_1_nb_16_ws_3',
-'skewness-Laws S5E5',
-'kurtosis-Haralick correlation ws=7 n=4',
-'Collage_kurt_InformationMeasureOfCorrelation2_1_nb_64_ws_5',
-'Collage_median_DifferenceVariance_1_nb_64_ws_7',
-'skewness-Laws E5S5',
-'skewness-Gradient sobelxy']
+if train_test_info =='Train_Test_4':
+    # Test 4
+    feature_list = [
+    'skewness-Laws R5S5',
+    'Collage_kurt_MaximalCorrelationCoefficient_1_nb_4_ws_5',
+    'Collage_skew_InformationMeasureOfCorrelation2_1_nb_8_ws_3',
+    'Collage_kurt_Contrast_1_nb_8_ws_7',
+    'Collage_median_MaximalCorrelationCoefficient_1_nb_32_ws_3',
+    'Collage_skew_Correlation_1_nb_16_ws_5',
+    'Collage_skew_MaximalCorrelationCoefficient_1_nb_4_ws_3',
+    'Collage_skew_SumVariance_1_nb_8_ws_5',
+    'median-Laws E5L5',
+    'Collage_skew_Entropy_1_nb_16_ws_7',
+    'skewness-Laws S5E5',
+    'skewness-Laws W5L5',
+    'Collage_skew_DifferenceEntropy_1_nb_4_ws_3',
+    'Collage_var_Contrast_1_nb_8_ws_7',
+    'Collage_kurt_SumEntropy_1_nb_16_ws_5',
+    ]
+elif train_test_info =='Train_Test_3':
+    # test3
+    feature_list = ['Collage_skew_InformationMeasureOfCorrelation2_1_nb_8_ws_3',
+    'skewness-Laws S5E5',
+    'skewness-Laws R5S5',
+    'Collage_skew_InformationMeasureOfCorrelation2_1_nb_16_ws_5',
+    'Collage_skew_Correlation_1_nb_8_ws_5',
+    'median-Laws E5L5',
+    'median-Laws W5S5',
+    'Collage_skew_MaximalCorrelationCoefficient_1_nb_4_ws_3']
+    
+elif train_test_info =='Train_Test_2':
+    # test2
+    feature_list = ['Collage_kurt_MaximalCorrelationCoefficient_1_nb_4_ws_5',
+    'median-Laws E5L5',
+    'Collage_skew_InformationMeasureOfCorrelation2_1_nb_8_ws_3',
+    'Collage_var_InformationMeasureOfCorrelation2_1_nb_16_ws_3',
+    'skewness-Laws R5S5',
+    'Collage_skew_MaximalCorrelationCoefficient_1_nb_4_ws_3',
+    'skewness-Laws S5E5',
+    'median-Laws W5S5',
+    'Collage_kurt_MaximalCorrelationCoefficient_1_nb_4_ws_7',
+    'Collage_median_SumEntropy_1_nb_8_ws_3',
+    'Collage_kurt_SumEntropy_1_nb_16_ws_5',
+    'Collage_skew_SumVariance_1_nb_4_ws_7']
+    
+elif train_test_info =='Train_Test_1':
+    # test1
+    feature_list = ['Collage_skew_InformationMeasureOfCorrelation2_1_nb_8_ws_3',
+    'Collage_var_InformationMeasureOfCorrelation2_1_nb_16_ws_3',
+    'Collage_kurt_Contrast_1_nb_16_ws_7',
+    'Collage_skew_MaximalCorrelationCoefficient_1_nb_4_ws_3',
+    'Collage_kurt_SumAverage_1_nb_16_ws_3',
+    'Collage_kurt_InformationMeasureOfCorrelation2_1_nb_16_ws_3',
+    'Collage_kurt_MaximalCorrelationCoefficient_1_nb_4_ws_5',
+    'median-Laws E5L5',
+    'Collage_kurt_SumEntropy_1_nb_16_ws_3',
+    'skewness-Laws S5E5',
+    'kurtosis-Haralick correlation ws=7 n=4',
+    'Collage_kurt_InformationMeasureOfCorrelation2_1_nb_64_ws_5',
+    'Collage_median_DifferenceVariance_1_nb_64_ws_7',
+    'skewness-Laws E5S5',
+    'skewness-Gradient sobelxy']
 
 # %%
 # Get features

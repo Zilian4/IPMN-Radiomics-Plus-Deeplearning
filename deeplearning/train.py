@@ -64,12 +64,12 @@ def test(dataloader, model, loss_fn, device):
     with torch.no_grad(): 
         progress_bar = tqdm(dataloader, desc="Testing")
         for X, y in progress_bar:
-            y_all.extend(y)
+            y_all.append(y)
             X, y = X.to(device), y.to(device)
             pred = model(X)
             # print(pred)
             # print(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
-            pred_all.extend(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
+            pred_all.append(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
             loss = loss_fn(pred, y)
             total_loss += loss.item()
             correct = (pred.argmax(1) == y).type(torch.float).sum().item()
@@ -77,9 +77,9 @@ def test(dataloader, model, loss_fn, device):
             batch_count += 1
             sample_count += len(X)
             progress_bar.set_postfix(loss=f"{loss.item():.4f}", loss_avg = f"{total_loss/batch_count:.4f}", acc=f"{correct/len(X):.4f}", acc_avg = f"{total_correct/sample_count:.4f}")    
-    y_all = label_binarize(y_all, classes=[0, 1, 2])
+
     try:
-        auc_score = roc_auc_score(y_all, pred_all, average='macro', multi_class='ovr')
+        auc_score = roc_auc_score(y_all, pred_all, average='macro')
     except ValueError as e:
         print("Error calculating AUC:", e)
         auc_score = 0

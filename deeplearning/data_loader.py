@@ -36,7 +36,7 @@ def get_data_list(dataset_dtl, images_path,labels_path,fold):
     df = pd.read_csv(labels_path)
     df_cleaned = df.dropna(subset=[df.columns[1]]) # remove NaN
 
-    train_list,val_list, test_list = get_tr_vl_ts_list(dataset_dtl,fold)
+    train_list,val_list, test_list = get_tr_vl_ts_list(dataset_dtl,int(fold))
     df_train = df_cleaned[df_cleaned['name'].isin(train_list)]
     df_val = df_cleaned[df_cleaned['name'].isin(val_list)]
     df_test = df_cleaned[df_cleaned['name'].isin(test_list)]
