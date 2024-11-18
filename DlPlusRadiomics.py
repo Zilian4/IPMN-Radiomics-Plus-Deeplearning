@@ -4,11 +4,11 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import pandas as pd
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score,roc_auc_score,classification_report,recall_score,precision_score
+from sklearn.metrics import accuracy_score,roc_auc_score,classification_report,recall_score,precision_score,roc_curve
 from sklearn.svm import SVC
 import numpy as np
 import fusion_model
-
+import matplotlib.pyplot as plt
 import json
 from monai.networks.nets import DenseNet121
 import torch
@@ -17,6 +17,7 @@ from monai.transforms import RandRotate90, Resize, EnsureChannelFirst, Compose, 
 import os
 from tqdm import tqdm
 from joblib import load
+import pickle
 from sklearn.linear_model import LogisticRegression
 from fusion_model import FusionModel
 
@@ -105,11 +106,8 @@ def predict_with_fusion_model(densenet_model, rf_model, fusion_model,image_datal
     fusion_proba = fusion_model.predict_proba(fusion_features)
     return fusion_predictoin,fusion_proba
 
-# %% [markdown]
-# Important addresses
-
 # %%
-train_test_info = 'Train_Test_4'
+train_test_info = 'Train_Test_1'
 
 dataset_dtl_path = f'/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/{train_test_info}.json'
 # deep learning input
@@ -239,7 +237,7 @@ val_precision_list = []
 
 
 
-
+roc_list = []
 
 for fold in range(5):
     radiomics_model = load(os.path.join(radiomcis_model_dir,f'{train_test_info}/{train_test_info}_Fold{fold+1}.joblib'))
@@ -317,19 +315,26 @@ for fold in range(5):
     radiomics_prob = get_rf_probabilities(radiomics_model,x_test)
     probs = np.hstack([radiomics_prob, dl_prob])
     y_prob = fm.predict_proba(probs)
-    y_pred = fm.predict(probs)  
+    y_pred = fm.predict(probs) 
+    
+    
     test_accuracy = accuracy_score(y_test, y_pred)
     test_acc_list.append(test_accuracy)
     test_auc = roc_auc_score(y_test, y_prob[:, 1])
     test_auc_list.append(test_auc)
+    # ---------ROC curve----------
+    fpr, tpr, _ =roc_curve(y_test, y_prob[:, 1])
+    roc_list.append([fpr, tpr, test_auc])
+    
     print(f"Test {fold} - ACC: {test_accuracy:.4f}, AUC: {test_auc:.4f}")
     print("-" * 40)
+    
 print('Validation set')
 get_results(val_acc_list,val_auc_list,val_recall_list,val_precision_list)
 print("Test set")
 get_results(test_acc_list,test_auc_list,test_recall_list,test_precision_list)
 print('================================================')
 
-
-
-
+with open(f"ROC_curve_data_{train_test_info}.pkl", "wb") as file:
+    pickle.dump(roc_list, file)
+print("Data saved in 'data.pkl'")
