@@ -114,7 +114,10 @@ def predict_with_fusion_model(densenet_model, rf_model, fusion_model,image_datal
 
 # %%
 train_test_info = 'Train_Test_1'
+<<<<<<< HEAD
 feature_dim =  '3D'
+=======
+>>>>>>> 0d7189f2d5bb3f437989ebeeb2e811fd8b186bdc
 
 dataset_dtl_path = f'/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/{train_test_info}.json'
 
@@ -398,19 +401,27 @@ for fold in range(5):
     probs = np.hstack([radiomics_prob, dl_prob])
     y_prob = fm.predict_proba(probs)
     y_pred = fm.predict(probs) 
+<<<<<<< HEAD
     prediction_record_test[f'Fold{fold}_prediction'] = y_pred
     
     # print("Deeplearning proba:\n",dl_prob)
     # print("Radiomics proba:\n",radiomics_prob)
     # print('Fusion weights: k: {}, t: {}'.format(fm.k,fm.t),'\n')
     # print("fusion proba:\n",y_prob)
+=======
+    
+    
+>>>>>>> 0d7189f2d5bb3f437989ebeeb2e811fd8b186bdc
     test_accuracy = accuracy_score(y_test, y_pred)
     test_acc_list.append(test_accuracy)
     test_auc = roc_auc_score(y_test, y_prob[:, 1])
     test_auc_list.append(test_auc)
+<<<<<<< HEAD
     test_specificity, test_sensitivity = sensitivity_specificity(y_test, y_pred)
     test_sensitivity_list.append(test_sensitivity)
     test_specificity_list.append(test_specificity)
+=======
+>>>>>>> 0d7189f2d5bb3f437989ebeeb2e811fd8b186bdc
     # ---------ROC curve----------
     fpr, tpr, _ =roc_curve(y_test, y_prob[:, 1])
     roc_list.append([fpr, tpr, test_auc])
@@ -418,18 +429,27 @@ for fold in range(5):
     print(f"Test {fold} - ACC: {test_accuracy:.4f}, AUC: {test_auc:.4f}")
     print("-" * 40)
     
+<<<<<<< HEAD
     print(f"Val  {fold} - ACC: {val_accuracy:.4f}, AUC: {val_auc:.4f}")
     print("-" * 40)
 
 # prediction_record_test.to_csv(f'/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/pred_record_test/{train_test_info}_{feature_dim}.csv',index=False)
 # prediction_record_val.to_csv(f'/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/pred_record_val/{train_test_info}_{feature_dim}.csv',index=False)
+=======
+>>>>>>> 0d7189f2d5bb3f437989ebeeb2e811fd8b186bdc
 print('Validation set')
 get_results(val_acc_list,val_auc_list,val_sensitivity_list,val_specificity_list)
 print("Test set")
 get_results(test_acc_list,test_auc_list,test_sensitivity_list,test_specificity_list)
 print('================================================')
 
+<<<<<<< HEAD
 # with open(f"/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/ROC_info/ROC_curve_data_{train_test_info}_{feature_dim}.pkl", "wb") as file:
 #     pickle.dump(roc_list, file)
 # print("ROC info saved 'data.pkl'")
 
+=======
+with open(f"ROC_curve_data_{train_test_info}.pkl", "wb") as file:
+    pickle.dump(roc_list, file)
+print("Data saved in 'data.pkl'")
+>>>>>>> 0d7189f2d5bb3f437989ebeeb2e811fd8b186bdc

@@ -27,7 +27,6 @@ from monai.transforms import (
     RandFlip,
     RandRotate,
     RandZoom,
-    ScaleIntensity,
     MixUp,
     CutMix,
     RandAxisFlip
@@ -43,8 +42,8 @@ def train(dataloader, model, loss_fn, optimizer, device):
 
         # Compute prediction error
         pred = model(X)
+        y = y.long()
         loss = loss_fn(pred, y)
-
         # Backpropagation
         loss.backward()
         optimizer.step()
@@ -59,17 +58,17 @@ def test(dataloader, model, loss_fn, device):
     total_loss, total_correct = 0, 0
     batch_count = 0
     sample_count = 0
-    y_all = []
+    y_all_onehot = []
+    pred_all_proba = []
     pred_all = []
     with torch.no_grad(): 
         progress_bar = tqdm(dataloader, desc="Testing")
         for X, y in progress_bar:
-            y_all.append(y)
-            X, y = X.to(device), y.to(device)
+            y_all_onehot.extend(label_binarize(y, classes=[0, 1, 2]))
+            X, y = X.to(device), y.to(device).long()
             pred = model(X)
-            # print(pred)
-            # print(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
-            pred_all.append(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
+            pred_all_proba.extend(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
+            pred_all.extend(pred.argmax(1).cpu().tolist())
             loss = loss_fn(pred, y)
             total_loss += loss.item()
             correct = (pred.argmax(1) == y).type(torch.float).sum().item()
@@ -79,31 +78,31 @@ def test(dataloader, model, loss_fn, device):
             progress_bar.set_postfix(loss=f"{loss.item():.4f}", loss_avg = f"{total_loss/batch_count:.4f}", acc=f"{correct/len(X):.4f}", acc_avg = f"{total_correct/sample_count:.4f}")    
 
     try:
-        auc_score = roc_auc_score(y_all, pred_all, average='macro')
+        auc_score = roc_auc_score(y_all_onehot, pred_all_proba, average='macro',multi_class='ovr')
     except ValueError as e:
         print("Error calculating AUC:", e)
         auc_score = 0
-    
-    return total_loss/batch_count, total_correct/sample_count, auc_score
+
+    return total_loss/batch_count, total_correct/sample_count, auc_score,pred_all
     
 if __name__ == "__main__":
     # Required info
     parser = argparse.ArgumentParser(description="Classification Training.")
     parser.add_argument("--image-path", default=None, required=True,type=str, help="images path")
     parser.add_argument("--output-dir", default="./weights", type=str, help="path to save outputs")
-    parser.add_argument("--dataset_dtl",default=None,required=True,type=str,help="json file, contains data set splitting details of cross validation")
+    parser.add_argument("--split",default=None,required=True,type=str,help="json file, contains data set splitting details of cross validation")
     parser.add_argument("--label",default=None,required=True,type=str,help="csv file contains names and labels")
     
     # Optional 
     parser.add_argument("--device", default="0", help="device (Use cuda or cpu Default: cuda)")
     parser.add_argument("-b", "--batch-size", default=16, type=int, help="batch size")
     parser.add_argument("-j", "--workers", default=0, type=int, metavar="N", help="number of data loading workers")
-    parser.add_argument("--epochs", default=100, type=int, metavar="N", help="number of total epochs to run")
+    parser.add_argument("--epochs", default=200, type=int, metavar="N", help="number of total epochs to run")
     parser.add_argument("--lr", default=1e-3, type=float, help="initial learning rate")
     parser.add_argument("--lr-step-size", default=30, type=int, help="decrease lr every step-size epochs")
     parser.add_argument("--lr-gamma", default=0.1, type=float, help="decrease lr by a factor of lr-gamma")
-    parser.add_argument("--split-ratio", default=0.8, type=float, help="training ratio")
-    parser.add_argument("--split-seed", default=0, type=float, help="split seed")
+    # parser.add_argument("--split-ratio", default=0.8, type=float, help="training ratio")
+    # parser.add_argument("--split-seed", default=0, type=float, help="split seed")
     parser.add_argument("--resume", default="model_loss.pth", type=str, help="path of checkpoint")
     parser.add_argument("--t", default=1, type=int, help="modality (must be 1 or 2)")
     parser.add_argument("-s", "--seed", default=None, type=int, metavar="N", help="Seed")
@@ -117,20 +116,27 @@ if __name__ == "__main__":
         os.makedirs(args.output_dir)
         
     device = torch.device(f'cuda:{args.device}')
-    df_train, df_val,df_test = get_data_list(dataset_dtl=args.dataset_dtl,
+    df_train, df_val,df_test = get_data_list(split=args.split,
                                            labels_path=args.label,
                                            images_path=args.image_path,
                                            fold=args.fold)
-    print(f'Using dataset information:{args.dataset_dtl}')
+    print(f'Using split information:{args.split}')
     print(f"Fold {args.fold}, \n Cross validation train: {len(df_train)}  val:{len(df_val)}.")
+<<<<<<< HEAD
     # split = int(np.floor(len(image_list) * args.split_ratio))
     # indices = np.random.default_rng(seed=args.split_seed).permutation(len(image_list))
     # train_idx, test_idx = list(indices[:split]), list(indices[split:])
     train_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((196, 196, 36)), RandAxisFlip(prob=0.5), RandRotate90()])
     test_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((196, 196, 36))])
+=======
+    # 196, 196, 36)
+    train_transforms = Compose([EnsureChannelFirst(), Resize((96, 96, 96)), RandAxisFlip(prob=0.5), RandRotate90()])
+    test_transforms = Compose([EnsureChannelFirst(), Resize((96, 96, 96))])
+>>>>>>> 0d7189f2d5bb3f437989ebeeb2e811fd8b186bdc
     
     train_ds = ImageDataset(image_files=df_train['path'].to_list(), labels=df_train['label'].to_list(), transform=train_transforms)
     test_ds = ImageDataset(image_files=df_val['path'].to_list(), labels=df_val['label'].to_list(), transform=test_transforms)
+
     train_dataloader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
     test_dataloader = DataLoader(test_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
     model = get_model()
@@ -139,16 +145,18 @@ if __name__ == "__main__":
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma)
     log = {'train_loss':[], 'test_loss':[], 'test_acc':[], 'test_auc':[]}
-    info = f'{args.dataset_dtl.split("/")[-1].split(".json")[0]}_fold{args.fold}'
+    info = f'{args.split.split("/")[-1].split(".json")[0]}_fold{args.fold}'
+    
+    pred_record = df_val[['name','label']]
     for epoch in range(args.epochs):
         log['train_loss'].append(train(train_dataloader, model, loss_fn, optimizer, device))
         scheduler.step()
-        loss, acc, auc = test(test_dataloader, model, loss_fn, device)
+        loss, acc, auc,pred_all = test(test_dataloader, model, loss_fn, device)
         log['test_loss'].append(loss)
         log['test_acc'].append(acc)
         log['test_auc'].append(auc)
         print(f"Epoch {epoch} train loss {log['train_loss'][-1]:.4f} test loss {log['test_loss'][-1]:.4f} test acc {log['test_acc'][-1]:.4f}  test auc {log['test_auc'][-1]:.4f}")
-        torch.save(model.state_dict(), os.path.join(args.output_dir, "checkpoint.pth"))
+        torch.save(model.state_dict(), os.path.join(args.output_dir, f"checkpoint_{info}.pth"))
         
         with open(os.path.join(args.output_dir, f"log_{info}.json"), 'w') as f:
             json.dump(log, f)
@@ -158,5 +166,7 @@ if __name__ == "__main__":
             torch.save(model.state_dict(), os.path.join(args.output_dir, f"model_acc_{info}.pth"))
         if log['test_auc'][-1] >= max(log['test_auc']):    
             torch.save(model.state_dict(), os.path.join(args.output_dir, f"model_auc_{info}.pth"))
+            pred_record['prediction'] = pred_all
     print(f"Acc best model test acc {max(log['test_acc']):.4f} test auc {log['test_auc'][np.argmax(log['test_acc'])]:.4f}")
     print(f"Auc best model test acc {log['test_acc'][np.argmax(log['test_auc'])]:.4f} test auc {max(log['test_auc']):.4f}")
+    print(pred_record.to_csv(os.path.join(args.output_dir,f'{info}_prediction_record.csv')))

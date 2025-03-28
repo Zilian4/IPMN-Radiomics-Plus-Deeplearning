@@ -31,13 +31,19 @@ def get_tr_vl_ts_list(dataset_dtl,fold=0):
     return train_list,val_list,test_list
 
 
-def get_data_list(dataset_dtl, images_path,labels_path,fold):
+def get_data_list(split, images_path,labels_path,fold):
     image_list = []
     label_list = []
-    df = pd.read_csv(labels_path)
+    try:
+        df = pd.read_csv(labels_path)
+    except Exception as e1:
+        try:
+            df = pd.read_excel(labels_path)
+        except Exception as e2:
+            print(f"An error occurred while reading label {labels_path}: {e2}")
     df_cleaned = df.dropna(subset=[df.columns[1]]) # remove NaN
 
-    train_list,val_list, test_list = get_tr_vl_ts_list(dataset_dtl,int(fold))
+    train_list,val_list, test_list = get_tr_vl_ts_list(split,int(fold))
     df_train = df_cleaned[df_cleaned['name'].isin(train_list)]
     df_val = df_cleaned[df_cleaned['name'].isin(val_list)]
     df_test = df_cleaned[df_cleaned['name'].isin(test_list)]
