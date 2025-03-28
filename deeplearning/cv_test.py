@@ -23,6 +23,7 @@ def get_results(acc_list,auc_list,recall_list,precision_list):
     print(f'precision, Average:{precision_list.mean():.4f}, Std:{precision_list.std():.4f}')
     print(f'Accuracy, Average:{acc_list.mean():.4f}, Std:{acc_list.std():.4f}')
     print(f'AUC, Average:{auc_list.mean():.4f}, Std:{auc_list.std():.4f}')
+    
 
 def get_data_list(dataset_dtl, images_path,labels_path,fold):
 
@@ -89,10 +90,6 @@ def get_dl_probabilities(dl_model, test_dataloader):
     return model
 
 
-# %% [markdown]
-# Important addresses
-
-# %%
 train_test_info = 'Train_Test_4'
 
 dataset_dtl_path = f'/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/{train_test_info}.json'
@@ -102,8 +99,6 @@ label_path = '/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/labels.csv'
 dl_model_dir = '/data/Ziliang/IPMN_cysts_20240909/DenseNet121_weights'
 
 
-
-# %%
 # Get features
 feature_path = '/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/radiomics/'
 data = pd.read_csv(os.path.join(feature_path,'Data/2D_t2/all.csv'))

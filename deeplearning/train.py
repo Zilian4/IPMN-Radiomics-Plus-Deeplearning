@@ -126,8 +126,8 @@ if __name__ == "__main__":
     # split = int(np.floor(len(image_list) * args.split_ratio))
     # indices = np.random.default_rng(seed=args.split_seed).permutation(len(image_list))
     # train_idx, test_idx = list(indices[:split]), list(indices[split:])
-    train_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((96, 96, 96)), RandAxisFlip(prob=0.5), RandRotate90()])
-    test_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((96, 96, 96))])
+    train_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((196, 196, 36)), RandAxisFlip(prob=0.5), RandRotate90()])
+    test_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((196, 196, 36))])
     
     train_ds = ImageDataset(image_files=df_train['path'].to_list(), labels=df_train['label'].to_list(), transform=train_transforms)
     test_ds = ImageDataset(image_files=df_val['path'].to_list(), labels=df_val['label'].to_list(), transform=test_transforms)

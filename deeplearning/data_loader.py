@@ -7,6 +7,7 @@ import monai
 import pandas as pd
 import json
 from monai.data import DataLoader, ImageDataset,decollate_batch
+
 def get_tr_vl_ts_list(dataset_dtl,fold=0):
 
     with open(dataset_dtl, 'r') as f:

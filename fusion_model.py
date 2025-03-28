@@ -1,5 +1,6 @@
 from sklearn.base import BaseEstimator, ClassifierMixin
 import numpy as np
+from sklearn.metrics import confusion_matrix
 
 class FusionModel(BaseEstimator, ClassifierMixin):
     def __init__(self, k=0.5, t=0):
@@ -12,6 +13,8 @@ class FusionModel(BaseEstimator, ClassifierMixin):
         """
         self.k = k
         self.t = t
+        self.threshold = 0.5
+        self.best_Youden_statistic = 0
 
     def fit(self, X, y):
         """
@@ -57,5 +60,28 @@ class FusionModel(BaseEstimator, ClassifierMixin):
         
         proba = self.predict_proba(combined_prob)
         
-        return (proba[:, 1] > 0.5).astype(int)
+        return (proba[:, 1] > self.threshold).astype(int)
+    
+    def set_threshold(self, threshold):
+        self.threshold = threshold
         
+    def Youden_statistic(self, sensitivity,specificity):
+        return sensitivity + specificity - 1
+    
+    def sensitivity_specificity(self,y_true, y_pred):
+        tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+        sensitivity = tp / (tp + fn)  
+        specificity = tn / (tn + fp)  
+        return sensitivity, specificity
+    
+    def fit_threshold(self, y_true,combined_prob):
+        best_threshold = -1
+        for threshold in np.arange(0, 1, 0.01):
+            self.set_threshold(threshold)
+            y_pred = self.predict(combined_prob)
+            sensitivity,specificity = self.sensitivity_specificity(y_true, y_pred)
+            if self.Youden_statistic(sensitivity,specificity) > self.best_Youden_statistic:
+                best_threshold = threshold
+                self.best_Youden_statistic = self.Youden_statistic(sensitivity,specificity)
+        self.set_threshold(best_threshold)
+        return self
