@@ -6,6 +6,7 @@
         "EMC047.nii.gz",
         "EMC024.nii.gz",
         "EMC010.nii.gz",
+        
         "EMC073.nii.gz",
         "EMC045.nii.gz",
         "EMC034.nii.gz",
@@ -352,7 +353,7 @@
                 "CAD_137.nii.gz",
                 "nyu_0018.nii.gz",
                 "ahn_29.nii.gz",
-                ".DS_Store",
+                
                 "NU_155.nii.gz",
                 "NU_59_1.nii.gz",
                 "nyu_0081.nii.gz",
@@ -567,7 +568,7 @@
                 "NU_110.nii.gz",
                 "ahn_29.nii.gz",
                 "NU_28_1.nii.gz",
-                ".DS_Store",
+                
                 "NU_79_1.nii.gz",
                 "NU_101.nii.gz",
                 "CAD_251.nii.gz",
@@ -898,7 +899,7 @@
                 "ahn_29.nii.gz",
                 "IUC_59.nii.gz",
                 "IUC_19.nii.gz",
-                ".DS_Store",
+                
                 "NU_101.nii.gz",
                 "CAD_251.nii.gz",
                 "nyu_0095.nii.gz",
@@ -1239,7 +1240,7 @@
                 "IUC_59.nii.gz",
                 "NU_28_1.nii.gz",
                 "IUC_19.nii.gz",
-                ".DS_Store",
+                
                 "NU_79_1.nii.gz",
                 "NU_101.nii.gz",
                 "CAD_251.nii.gz",
@@ -1567,7 +1568,7 @@
                 "IUC_59.nii.gz",
                 "NU_28_1.nii.gz",
                 "IUC_19.nii.gz",
-                ".DS_Store",
+                
                 "NU_79_1.nii.gz",
                 "nyu_0095.nii.gz",
                 "MCF_16.nii.gz",

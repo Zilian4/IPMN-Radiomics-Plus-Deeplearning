@@ -23,12 +23,6 @@ from monai.transforms import (
     EnsureChannelFirst,
     AsDiscrete,
     Compose,
-    LoadImage,
-    RandFlip,
-    RandRotate,
-    RandZoom,
-    MixUp,
-    CutMix,
     RandAxisFlip
 )
 
@@ -64,10 +58,10 @@ def test(dataloader, model, loss_fn, device):
     with torch.no_grad(): 
         progress_bar = tqdm(dataloader, desc="Testing")
         for X, y in progress_bar:
-            y_all_onehot.extend(label_binarize(y, classes=[0, 1, 2]))
+            y_all_onehot.extend(label_binarize(y, classes=[0, 1]))
             X, y = X.to(device), y.to(device).long()
             pred = model(X)
-            pred_all_proba.extend(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy())
+            pred_all_proba.extend(torch.nn.functional.softmax(pred, dim=-1).cpu().numpy()[:,1])
             pred_all.extend(pred.argmax(1).cpu().tolist())
             loss = loss_fn(pred, y)
             total_loss += loss.item()
@@ -82,7 +76,6 @@ def test(dataloader, model, loss_fn, device):
     except ValueError as e:
         print("Error calculating AUC:", e)
         auc_score = 0
-
     return total_loss/batch_count, total_correct/sample_count, auc_score,pred_all
     
 if __name__ == "__main__":
@@ -116,23 +109,20 @@ if __name__ == "__main__":
         os.makedirs(args.output_dir)
         
     device = torch.device(f'cuda:{args.device}')
-    df_train, df_val,df_test = get_data_list(split=args.split,
+    df_train, df_val,_ = get_data_list(split=args.split,
                                            labels_path=args.label,
                                            images_path=args.image_path,
                                            fold=args.fold)
     print(f'Using split information:{args.split}')
     print(f"Fold {args.fold}, \n Cross validation train: {len(df_train)}  val:{len(df_val)}.")
-<<<<<<< HEAD
     # split = int(np.floor(len(image_list) * args.split_ratio))
     # indices = np.random.default_rng(seed=args.split_seed).permutation(len(image_list))
     # train_idx, test_idx = list(indices[:split]), list(indices[split:])
-    train_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((196, 196, 36)), RandAxisFlip(prob=0.5), RandRotate90()])
-    test_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((196, 196, 36))])
-=======
+    # train_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((196, 196, 36)), RandAxisFlip(prob=0.5), RandRotate90()])
+    # test_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((196, 196, 36))])
     # 196, 196, 36)
     train_transforms = Compose([EnsureChannelFirst(), Resize((96, 96, 96)), RandAxisFlip(prob=0.5), RandRotate90()])
     test_transforms = Compose([EnsureChannelFirst(), Resize((96, 96, 96))])
->>>>>>> 0d7189f2d5bb3f437989ebeeb2e811fd8b186bdc
     
     train_ds = ImageDataset(image_files=df_train['path'].to_list(), labels=df_train['label'].to_list(), transform=train_transforms)
     test_ds = ImageDataset(image_files=df_val['path'].to_list(), labels=df_val['label'].to_list(), transform=test_transforms)
@@ -149,6 +139,7 @@ if __name__ == "__main__":
     
     pred_record = df_val[['name','label']]
     for epoch in range(args.epochs):
+    # for epoch in range(1):    
         log['train_loss'].append(train(train_dataloader, model, loss_fn, optimizer, device))
         scheduler.step()
         loss, acc, auc,pred_all = test(test_dataloader, model, loss_fn, device)
