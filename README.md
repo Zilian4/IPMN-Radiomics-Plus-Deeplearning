@@ -1,2 +1,2 @@
 # IPMN-Radiomics-Plus-Deeplearning
- DenseNet121 combine with other machine learning model
+Radiomics based Random forest model and Deeplearning model(DenseNet). 
