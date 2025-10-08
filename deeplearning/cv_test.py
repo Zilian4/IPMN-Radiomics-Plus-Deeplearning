@@ -24,22 +24,6 @@ def get_results(acc_list,auc_list,recall_list,precision_list):
     print(f'Accuracy, Average:{acc_list.mean():.4f}, Std:{acc_list.std():.4f}')
     print(f'AUC, Average:{auc_list.mean():.4f}, Std:{auc_list.std():.4f}')
     
-
-def get_data_list(dataset_dtl, images_path,labels_path,fold):
-
-    image_list = []
-    label_list = []
-    df = pd.read_csv(labels_path)
-    df_cleaned = df.dropna(subset=[df.columns[1]]) # remove NaN
-
-    train_list,val_list, test_list = get_tr_vl_ts_list(dataset_dtl,fold)
-    df_train = df_cleaned[df_cleaned['name'].isin(train_list)]
-    df_val = df_cleaned[df_cleaned['name'].isin(val_list)]
-    df_test = df_cleaned[df_cleaned['name'].isin(test_list)]
-
-    df_train['path'] = df_train['name'].apply(lambda x: os.path.join(images_path, x+'.nii.gz'))
-    df_test['path'] = df_test['name'].apply(lambda x: os.path.join(images_path, x+'.nii.gz'))
-    df_val['path'] = df_val['name'].apply(lambda x: os.path.join(images_path, x+'.nii.gz'))
     
 def get_tr_vl_ts_list(dataset_dtl,fold=0):
 
@@ -80,16 +64,6 @@ def get_dl_probabilities(dl_model, test_dataloader):
     return np.array(prediction_list)
 
 
-    dl_probs = get_densenet_probabilities(dl_model, image_dataloader)
-    rf_probs = get_rf_probabilities(rf_model, radiomics_data)
-    fusion_features = np.hstack([dl_probs, rf_probs])
-    # fusion_features = np.hstack([densenet_probs[:,1].reshape(len(labels),1), rf_probs[:,1].reshape(len(labels),1)])
-    print(fusion_features.shape)
-    model = LogisticRegression()
-    model.fit(fusion_features, labels)
-    return model
-
-
 train_test_info = 'Train_Test_4'
 
 dataset_dtl_path = f'/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/{train_test_info}.json'
@@ -121,9 +95,6 @@ y_test = test_data[["Label"]]
 # x_test_scaled = pd.DataFrame(standard_scaler.transform(x_test_raw),columns=x_test_raw.columns)
 # x_test = x_test_scaled[feature_list]
 test_data['path'] =test_data['Name'].apply(lambda x: os.path.join(input_path, x+'.nii.gz'))
-
-
-
 test_transforms = Compose([ScaleIntensity(), EnsureChannelFirst(), Resize((96, 96, 96))])
 # %%
 models = []
@@ -137,10 +108,6 @@ val_recall_list = []
 val_precision_list = []
 
 # ------------------------
-
-
-
-
 
 for fold in range(5):
     train_list,val_list,test_list = get_tr_vl_ts_list(dataset_dtl=dataset_dtl_path,fold=fold)
