@@ -111,8 +111,8 @@ def predict_with_fusion_model(densenet_model, rf_model, fusion_model,image_datal
     return fusion_predictoin,fusion_proba
 
 # %%
-train_test_info = 'Train_Test_1'
-feature_dim =  '3D'
+train_test_info = 'Train_Test_4'
+feature_dim =  '2D'
 
 dataset_dtl_path = f'/home/pyq6817/IPMN-Radiomics-Plus-Deeplearning/{train_test_info}.json'
 
